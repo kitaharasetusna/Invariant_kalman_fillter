@@ -1,5 +1,5 @@
 import numpy as np
-
+import copy
 '''
 
 '''
@@ -14,13 +14,25 @@ class RobotState:
         self.P_ = np.eye(15)
     
     def getX(self):
-        return self.X_
+        return copy.deepcopy(self.X_)
     
     def getTheta(self):
-        return self.Theta_
+        return  copy.deepcopy(self.Theta_)
 
     def getP_(self):
-        return self.P_
+        return copy.deepcopy(self.P_)
+
+    def getRotation(self):
+        R = self.X_[:3, :3]
+        return copy.deepcopy(R)
+    
+    def getPosition(self):
+        p = self.X_[:3, 4] #（3，）
+        return copy.deepcopy(p)
+    
+    def getVelocity(self):
+        v = self.X_[:3, 3] #（3，）
+        return copy.deepcopy(v)
 
 #----------------------------------------------for testing
 def testRobotStateInit():
@@ -31,6 +43,10 @@ def testRobotStateInit():
     print(Xt)
     print(Theta)
     print(P)
+    print(state.getRotation())
+    position = state.getPosition()
+    print(position.shape)
+    print(state.getVelocity())
 
 
 if __name__=="__main__":
