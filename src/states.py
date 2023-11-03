@@ -28,11 +28,17 @@ class RobotState:
     
     def getPosition(self):
         p = self.X_[:3, 4] #（3，）
-        return copy.deepcopy(p)
+        return copy.deepcopy(p.reshape(-1, 1))
     
     def getVelocity(self):
         v = self.X_[:3, 3] #（3，）
-        return copy.deepcopy(v)
+        return copy.deepcopy(v.reshape(-1, 1))
+    
+    def getGyroscopeBias(self):
+        return copy.deepcopy(self.Theta_[:3])
+    
+    def getAccelerometerBias(self):
+        return copy.deepcopy(self.Theta_[3:])
 
 #----------------------------------------------for testing
 def testRobotStateInit():
