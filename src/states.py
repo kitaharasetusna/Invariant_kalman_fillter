@@ -39,6 +39,24 @@ class RobotState:
     
     def getAccelerometerBias(self):
         return copy.deepcopy(self.Theta_[3:])
+    
+    def setRotation(self, R):
+        self.X_[:3, :3] = R
+    
+    def setVelocity(self, V):
+        self.X_[:3, 3] = V.reshape(-1,)
+    
+    def setPosition(self, P):
+        self.X_[:3, 4] = P.reshape(-1,)
+
+    def dimX(self):
+        return  self.X_.shape[1]
+    
+    def dimP(self):
+        return self.P_.shape[1]
+    
+    def dimTheta(self):
+        return self.Theta_.shape[0]
 
 #----------------------------------------------for testing
 def testRobotStateInit():

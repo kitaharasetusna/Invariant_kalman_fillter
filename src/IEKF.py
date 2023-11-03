@@ -1,7 +1,7 @@
 import numpy as np
-from States import RobotState
+from states import RobotState
 from NoiseParam import NoiseParam
-from matrixUtills import EXPSO3
+from matrixUtills import EXPSO3, skew
 
 class InEKF:
     def __init__(self, state, params):
@@ -29,6 +29,31 @@ class InEKF:
         v_pred = v+(R@a+self.g_)*dt #(3,1)
         p_pred = p+v*dt+0.5*(R@a+self.g_)*dt*dt #(3,3)
 
+        self.state_.setRotation(R_pred)        
+        self.state_.setVelocity(v_pred)
+        self.state_.setPosition(p_pred)
+
+        # for debugging 
+        # print(self.state_.getX())
+
+        #-----linearize the invariant error dynamics A_t
+        dimX = self.state_.dimX()
+        dimP = self.state_.dimP()
+        dimTheta = self.state_.dimTheta()
+
+        A = np.zeros((dimP, dimP))
+        A[3:6, :3] = skew(self.g_)
+        A[6:9, 3:6] = np.eye(3)
+        A[:3, dimP-dimTheta:dimP-dimTheta+3] = -R
+        A[3:6, dimP-dimTheta+3:dimP-dimTheta+6] = -R
+
+        for i in range(3, dimX):
+            A[3*i-6:3*i-3, dimP-dimTheta:dimP-dimTheta+3] = -skew(X[0:3,i].reshape(-1,1))@R
+            print(-skew(X[0:3,i].reshape(-1,1))@R)
+
+        # for i in range(len(A)):
+        #     print(A[i])
+
 
 
 
@@ -52,7 +77,8 @@ def testInEKFPropogate():
     param = NoiseParam()
     inefk = InEKF(state=state, params=param)
     inefk.propogate(np.random.randn(6,1), dt=0.1)
+    inefk.propogate(np.random.randn(6,1), dt=0.1)
 
 if __name__=="__main__":
-    #testInEFKInit()
+    # testInEFKInit()
     testInEKFPropogate()
