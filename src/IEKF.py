@@ -1,10 +1,11 @@
 import numpy as np
 from States import RobotState
 from NoiseParam import NoiseParam
+from matrixUtills import EXPSO3
 
 class InEKF:
     def __init__(self, state, params):
-        self.g_ = np.array([0, 0, -9.81])
+        self.g_ = np.array([0, 0, -9.81]).reshape(-1,1)
         self.state_ = state
         self.noise_params_ = params
     
@@ -24,9 +25,14 @@ class InEKF:
         p = self.state_.getPosition() #(3,1)
 
         phi = w*dt
-        print(phi)
+        R_pred = R@EXPSO3(phi) # (3,3) rotation in IMU fram to rotation in world frame
+        v_pred = v+(R@a+self.g_)*dt #(3,1)
+        p_pred = p+v*dt+0.5*(R@a+self.g_)*dt*dt #(3,3)
 
 
+
+
+        
 #----------------------------------------------for testing
 def testInEFKInit():
     state = RobotState()
