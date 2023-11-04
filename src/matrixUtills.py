@@ -28,6 +28,18 @@ def EXPSO3(w):
     # Eular angle to rotation matrix
     R = np.eye(3)+(np.sin(theta)/theta)*A + ((1-np.cos(theta))/(theta*theta))*A@A
     return R 
+
+def Adjoint_SEK3(X):
+    K = X.shape[1]-3 # num([v, p, d])
+    Adj = np.zeros((3+3*K, 3+3*K))
+    R = X[:3, :3]
+    Adj[:3,:3] = R
+    for i in range(K):
+        Adj[3+3*i:6+3*i,3+3*i:6+3*i] = R
+        Adj[3+3*i:6+3*i,0:3]= skew(X[:3, 3+i].reshape(-1, 1))@R
+    return Adj
+    
+
 #----------------------------------------------for testing
 def test_resizeNdarray():
     randn_matrix = np.random.randn(6,7)

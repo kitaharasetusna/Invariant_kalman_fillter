@@ -57,6 +57,9 @@ class RobotState:
     
     def dimTheta(self):
         return self.Theta_.shape[0]
+    
+    def setP(self, P):
+        self.P_ = P
 
 #----------------------------------------------for testing
 def testRobotStateInit():
