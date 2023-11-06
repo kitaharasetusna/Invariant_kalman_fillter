@@ -198,7 +198,7 @@ class InEKF:
         
         # XY-b
         Z = BigX@obs.Y_ - obs.b_
-        delta = K@obs.PI@Z
+        delta = K@obs.PI_@Z
         # got the lie algebra for the update
         dX = Exp_SEK3(delta[0:delta.shape[0]-state_.dimTheta()])
         # dTheta = delta.segment(delta.rows()-state_.dimTheta(), state_.dimTheta());
@@ -214,9 +214,9 @@ class InEKF:
 
         # Update Covariance
         # Pt_new = (I − Kt@Ht)@Pt
-        IKH = np.eye(self.state_.dimP()) - K@obs.H
+        IKH = np.eye(self.state_.dimP()) - K@obs.H_
         # however, we used Joseph update form: more stable
-        P_new = IKH@P@IKH.T+K@obs.N@K.T 
+        P_new = IKH@P@IKH.T+K@obs.N_@K.T 
         #Eigen::MatrixXd P_new = IKH * P * IKH.transpose() + K*obs.N*K.transpose(); // Joseph update form
 
         self.state_.setP(P_new)
