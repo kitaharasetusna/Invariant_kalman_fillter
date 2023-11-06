@@ -17,6 +17,14 @@ class Observation:
         self.N_ = N
         self.PI_  = PI
 
+def removeRowAndColumn(M, index):
+    dimX = M.shape[1] 
+    M[index:dimX-1 , :] = M[index+1:dimX, :]
+    M[:, index:dimX-1] = M[:, index+1, dimX]
+    new_M = np.zeros((dimX-1, dimX-1)) 
+    new_M = M[:dimx-1, :dimX-1]
+    return new_M
+
 class InEKF:
     def __init__(self, state, params):
         self.g_ = np.array([0, 0, -9.81]).reshape(-1,1)
@@ -139,6 +147,8 @@ class InEKF:
                 new_contacts.append(it) 
             elif contact_indicated==True and found==True:
                 # TODO: check this
+                # after updating P and X, use the updated Y, b, H, PI
+                # in this section, for convenience, we used index instead
                 dimX = self.state_.dimX()
                 dimP = self.state_.dimP()
                 
@@ -181,6 +191,38 @@ class InEKF:
                 # we have already update P and Q, then do correction
                 self.Correct(obs)
             
+            # removing unnecessary contacts from P and X
+            if len(remove_contacts)>0:
+                X_rem = self.state_.getX() 
+                P_rem = self.state_.getP_()
+                for it in remove_contacts:
+                    # Remove from list of estimated contact positions
+                    del self.estimated_contact_positions_[it[0]]
+                    # TODO: change this into matrix multiplications of F (after we test this part on the txt file)
+                    X_rem = removeRowAndColumn(M=X_rem, index=it[1])
+
+                    startIndex = 3+3*(it[1]-3)
+                    P_rem = removeRowAndColumn(M=P_rem, index=startIndex)
+                    P_rem = removeRowAndColumn(M=P_rem, index=startIndex)
+                    P_rem = removeRowAndColumn(M=P_rem, index=startIndex)
+
+                    # TODO: update landmarks
+
+                    # update estimation
+                    for it2 in self.estimated_contact_positions_.keys():
+                        if self.estimated_contact_positions_[it2] > it[1]:
+                            self.estimated_contact_positions_[it2] -=1
+                    
+                    # in case we have to remove multiple contacts
+                    for it2 in remove_contacts:
+                        if it2[1]>it[1]:
+                            it2[1] -= 1
+                    
+                    self.state_.setX(X_rem)
+                    self.state_.setP(P_rem)
+            
+            
+             
     def Correct(self, obs):
         # St = Ht @ Pt @Ht.T() + Nt
         # Kt = Pt @ Ht.T @St^{-1}
