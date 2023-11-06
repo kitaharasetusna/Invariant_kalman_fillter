@@ -1,14 +1,29 @@
 import numpy as np
 from states import RobotState
 from NoiseParam import NoiseParam
-from matrixUtills import EXPSO3, skew, Adjoint_SEK3
+from matrixUtills import EXPSO3, skew, Adjoint_SEK3, resizeNdarray, EXPSE3
+
+class Kinematics:
+    def __init__(self, id, pose, covariance):
+        self.id_ = id
+        self.pose_ = pose
+        self.covariance_ = covariance
+
+class Observation:
+    def __init__(self, Y, b, H, N, PI):
+        self.Y_ = Y
+        self.b_ = b
+        self.H_ = H
+        self.N_ = N
+        self.PI_  = PI
 
 class InEKF:
     def __init__(self, state, params):
         self.g_ = np.array([0, 0, -9.81]).reshape(-1,1)
         self.state_ = state
         self.noise_params_ = params
-        self.estimated_contact_positions_ = []
+        self.estimated_contact_positions_ = {}
+        self.contacts_ = {}
     
     # phase 1: project ahead
     # hat(X_{t+1}) = Phi@hat(X_{t})
@@ -83,7 +98,135 @@ class InEKF:
         P_pred = Phi@P@Phi.transpose() + Qk_hat
         
         self.state_.setP(P_pred)
+    
+    # contacts [[id, {0/1}], ...]
+    def setContacts(self, contacts):
+        for it in contacts:
+            self.contacts_[it[0]] = it[1]
+   
+   # measured_kinematics: a list to Kinematics 
+    def CorrectKinematics(self, measured_kinematics): 
+        R = self.state_.getRotation()
+        remove_contacts = []
+        new_contacts = []
+        Y = np.empty((0, 0))
+        b = np.empty((0, 0))
+        H = np.empty((0, 0))
+        N = np.empty((0, 0))
+        PI = np.empty((0, 0))
         
+        for it in measured_kinematics:
+            if it.id_ in self.contacts_.keys():
+                contact_indicated = self.contacts_[it.id_]
+            else:
+                continue
+
+            if it.id_ in self.estimated_contact_positions_.keys():
+                found = True
+            else:
+                found = False
+            
+            # if current censor have no contact events 
+            # and we have update the contact in X_t
+            # remove it
+            if contact_indicated==False and found==True:
+                # (id, start_index)
+                # TODO: check this
+                remove_contacts.append([it.id_, self.estimated_contact_positions_[it.id_]])
+            elif contact_indicated==True and found==False:
+                # if we haven't seen this before and it have contact event(1)
+                # put it into the new contacts
+                new_contacts.append(it) 
+            elif contact_indicated==True and found==True:
+                # TODO: check this
+                dimX = self.state_.dimX()
+                dimP = self.state_.dimP()
+                
+                startIndex = Y.shape[0]
+                Y = resizeNdarray(Y, (startIndex+dimX, 1))
+                # [h_p(alpha_t), 0, 1, -1]
+                Y[startIndex:startIndex+3] = it.pose_[0:3, 3]
+                Y[startIndex+4]  = 1
+                # TODO: check wether the index it's 5
+                T[startIndex+self.estimated_contact_positions_[it.id_]] = -1
+
+                # [0_{1,3}, 0, -1, 1]
+                startIndex = b.shape[0]
+                b = resizeNdarray(b, (startIndex+dimX, 1)) 
+                b[startIndex+4] = 1
+                b[startIndex+self.estimated_contact_positions_[it.id_]] = -1
+
+                # [0_{3,3}, 0_{3,3}, -I, I, 0_{3,3} 0_{3,3}]
+                startIndex = H.shape[0]
+                H = resizeNdarray(H, (startIndex+3, dimP))
+                H[startIndex:startIndex+3, 6:9] = -np.eye(3)
+                H[startIndex:startIndex+3,  \
+                    3*self.estimated_contact_positions_[it.id_]-6:3*self.estimated_contact_positions_[it.id_]-3] \
+                        = np.eye(3)
+                
+                startIndex = N.shape[0]
+                N = resizeNdarray(N, (startIndex+3, startIndex+3))
+                N[startIndex:startIndex+3, startIndex:startIndex+3] =  R@it.covariance_[3:6, 3:6]@R.T
+
+                startIndex = PI.shape[0]
+                startIndex_col = PI.shape[1]
+                PI = resizeNdarray(PI, (startIndex+3, startIndex_col+dimX))
+                PI[startIndex:startIndex+3, startIndex_col:startIndex_col+3] = np.eye(3)
+            else:
+                continue
+
+            obs = Observation(Y=Y, b=b, H=H, N=N, PI=PI) 
+            if Y.shape[0]>0:
+                # when you have contact information and
+                # we have already update P and Q, then do correction
+                self.Correct(obs)
+            
+    def Correct(self, obs):
+        # St = Ht @ Pt @Ht.T() + Nt
+        # Kt = Pt @ Ht.T @St^{-1}
+        P = self.state_.getP_()
+
+        PHT = P@obs.H_.T
+        S = obs.H_ @PHT+obs.N_
+
+        K = PHT@np.linalg.inv(S)
+
+        BigX_ori = np.empty((0, 0))
+        # TODO: check this division
+        # repeat X for number of observations(contact events)
+        BigX = self.state_.copyDiag(n=obs.Y_.shape[0]/self.state_.dimX(), BigX=BigX_ori)
+        
+        # XY-b
+        Z = BigX@obs.Y_ - obs.b_
+        delta = K@obs.PI@Z
+        # got the lie algebra for the update
+        dX = Exp_SEK3(delta[0:delta.shape[0]-state_.dimTheta()])
+        # dTheta = delta.segment(delta.rows()-state_.dimTheta(), state_.dimTheta());
+        dtheta = delta[delta.shape[0]-self.state_.dimTheta():delta.shape[0]]
+
+        # Xt^{+} = exp ( Lt (hat(Xt)Yt − b )) @Xt
+        X_new = dX@slef.state_.getX()
+        # Theta_new = state_.getTheta() + dTheta;
+        Theta_new = self.state_.getTheta()+dtheta
+
+        self.state_.setX(X=X_new)
+        self.state_.setTheta(theta=Theta_new)
+
+        # Update Covariance
+        # Pt_new = (I − Kt@Ht)@Pt
+        IKH = np.eye(self.state_.dimP()) - K@obs.H
+        # however, we used Joseph update form: more stable
+        P_new = IKH@P@IKH.T+K@obs.N@K.T 
+        #Eigen::MatrixXd P_new = IKH * P * IKH.transpose() + K*obs.N*K.transpose(); // Joseph update form
+
+        self.state_.setP(P_new)
+
+        
+
+
+
+            
+                    
 
 
         

@@ -29,6 +29,31 @@ def EXPSO3(w):
     R = np.eye(3)+(np.sin(theta)/theta)*A + ((1-np.cos(theta))/(theta*theta))*A@A
     return R 
 
+# v:(n,1)
+def EXPSE3(v):
+    K = (v.shape[0]-3)/3
+    X = np.eye(K+3)
+    w = v[:3]
+    theta = np.linalg.norm(w)
+    I = np.eye(3)
+    if theta<TOL_EXP:
+        R = I
+        Jl = I
+    else:
+        A = skew(w)
+        theta2 = theta*theta
+        stheta = np.sin(theta)
+        ctheta = np.cos(theta)
+        oneMinusCosTheta2 = (1-ctheta)/(theta2)
+        A2 = A@A
+        R =  I + (stheta/theta)*A + oneMinusCosTheta2*A2
+        Jl = I + oneMinusCosTheta2*A + ((theta-stheta)/(theta2*theta))*A2
+    X[:3, :3] = R
+    for i in range(K):
+        X[:3, 3+i] = Jl@v[3+3*i:6+3*i]
+    return X
+
+
 def Adjoint_SEK3(X):
     K = X.shape[1]-3 # num([v, p, d])
     Adj = np.zeros((3+3*K, 3+3*K))
