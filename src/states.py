@@ -53,6 +53,15 @@ class RobotState:
         P = copy.deepcopy(P)
         self.X_[:3, 4] = P.reshape(-1,)
     
+    def setGyroscopeBias(self, bg):
+        bg = copy.deepcopy(bg)
+        self.Theta_[0:3, :] = bg
+    
+    def setAccelerometerBias(self, ba:np.ndarray):
+        ba = copy.deepcopy(ba) 
+        self.Theta_[3:6, :] = ba
+    
+    
     def setX(self, X):
         self.X_ = X
     

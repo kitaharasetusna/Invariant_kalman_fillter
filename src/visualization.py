@@ -26,9 +26,9 @@ def VisualizeSE3(se3_matrix):
     ax.set_zlabel('Z')
 
     # Set plot limits (adjust as needed)
-    ax.set_xlim([-10, 10])
-    ax.set_ylim([-10, 10])
-    ax.set_zlim([-10, 10])
+    ax.set_xlim([-5, 5])
+    ax.set_ylim([-5, 5])
+    ax.set_zlim([-5, 5])
 
     # Show the plot
     plt.show()
@@ -110,6 +110,7 @@ def gen_se3_matrics():
 
 def testViusualizeSE3Anim():
     se3_matrices = gen_se3_matrics() 
+    print(type(se3_matrices), se3_matrices[0].shape, len(se3_matrices))
     VisulizeSE3Anim(se3_matrices)
 
 

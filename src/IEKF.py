@@ -33,6 +33,10 @@ class InEKF:
         self.estimated_contact_positions_ = {}
         self.contacts_ = {}
     
+    def debug_print(self):
+        print(self.state_.getX()) 
+        print(self.state_.getTheta())
+        print(self.state_.getP_())
     # phase 1: project ahead
     # hat(X_{t+1}) = Phi@hat(X_{t})
     # P^{-}_{k+1} = Phi_{k}@P_{k}
