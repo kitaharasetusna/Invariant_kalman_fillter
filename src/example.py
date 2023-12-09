@@ -3,6 +3,8 @@ from states import RobotState
 from NoiseParam import NoiseParam
 import numpy as np
 from visualization import VisulizeSE3Anim
+from scipy.spatial.transform import Rotation as Rsp_
+from IEKF import Kinematics
 
 DT_MIN = 1e-6
 DT_MAX = 1
@@ -66,8 +68,40 @@ with open(file_path, 'r') as file:
 
         elif measurement[0]=="CONTACT":
             print("getting contact events")
+            assert (len(measurement)-2)%2==0, "contact data is wrong, it should have 2*num_contact_sensors"
+            contacts = []
+            t = float(measurement[1])
+            for i in range(2, len(measurement), 2):
+                id_ = int(float(measurement[i]))
+                # print(id_); import sys; sys.exit()
+                indicator = bool(float(measurement[i+1])) 
+                contacts.append((id_, indicator))
+            inekf.setContacts(contacts=contacts)
+
         elif measurement[0]=="KINEMATIC":
             print("getting kinematic events")
+            assert (len(measurement)-2)%44==0, "kinetic data is wrong, it should have 44*num_kinetic_sensors_data"
+            pose = np.eye(4)
+            covariance = np.zeros((6, 6))
+            measured_kinematics = []
+            t = float(measurement[1])
+            for i in range(2, len(measurement), 44):
+                # TODO: normalize
+                R_ = Rsp_.from_quat([float(measurement[i+1]), float(measurement[i+2]),\
+                    float(measurement[i+3]), float(measurement[i+4])])
+                R_ = np.array(R)
+                # print(R_, type(R_), R_.shape); import sys; sys.exit()
+                p = np.array([measurement[i+5], measurement[i+6], measurement[i+7]]) 
+                pose[:3, :3] = R_
+                pose[:3, 3] = p.reshape(3,)
+                # print(pose, pose.shape); import sys; sys.exit()
+                for j in range(6):
+                    for k in range(6):
+                        covariance[j, k] = float(measurement[i+8+ j*6+k])
+                frame = Kinematics(id=id, pose=pose, covariance=covariance) 
+                measured_kinematics.append(frame)
+            inekf.CorrectKinematics(measured_kinematics=measured_kinematics)
+
         else:
             raise ValueError(measurement[0]) 
         
