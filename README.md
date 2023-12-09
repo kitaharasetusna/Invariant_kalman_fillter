@@ -22,5 +22,5 @@ For the covariance matrix, we use identity matrcies to build it. The predicted c
 
 ## Contact Estimator
 To get the contact estimation using neural network (we add LSTM and transformer based on the original code)
-The transformer is connected manually. You can find the code in this [forker repo](git@github.com:kitaharasetusna/deep-contact-estimator.git). 
+The transformer is connected manually. You can find the code in this [forker repo](https://github.com/kitaharasetusna/deep-contact-estimator). 
 <img width="671" alt="image" src="https://github.com/kitaharasetusna/Invariant_kalman_fillter/assets/116760304/fa1821a9-7010-46c3-9309-6789fb757f95">
